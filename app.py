@@ -1,13 +1,12 @@
-from flask import Flask, request, render_template, redirect, flash
+from flask import Flask, request, render_template, redirect, flash, session
 from flask_debugtoolbar import DebugToolbarExtension
 from surveys import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "oh-so-secret"
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 debug = DebugToolbarExtension(app)
-
-responses = []
 
 
 @app.route("/")
@@ -21,13 +20,14 @@ def start_page():
 def start_survey():
     """Clear the session of responses."""
 
-    responses = []
+    session["responses_key"] = []
 
     return redirect("/questions/0")
 
 
 @app.route("/questions/<int:id>")
 def question_page(id):
+    responses = session["responses_key"]
 
     if (responses is None):
         # trying to access question page too soon
@@ -51,8 +51,15 @@ def handle_question():
     """Save response and redirect to next question."""
 
     # get the response choice
-    answer = request.form['answer']
-    responses.append(answer)
+    choice = request.form['answer']
+
+    responses = session['responses_key']
+    responses.append(choice)
+    session['responses_key'] = responses
+    print("***************************")
+    print(responses)
+    print(session['responses_key'])
+    print("***************************")
 
     if (len(responses) == len(satisfaction_survey.questions)):
         # They've answered all the questions! Thank them.
@@ -65,5 +72,5 @@ def handle_question():
 @app.route("/complete")
 def complete():
     '''Show completion page'''
-
+    responses = session["responses_key"]
     return render_template("completion.html", responses=responses)
